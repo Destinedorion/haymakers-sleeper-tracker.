@@ -18,9 +18,9 @@ jobs:
         id: time
         shell: bash
         run: |
-          local_time=$(TZ=America/Chicago date +%H:%M)
+          local_time=$(TZ=America/Chicago date +%H)
           echo "Central time: $local_time"
-          if [[ "$local_time" == "06:45" || "$local_time" == "16:45" || "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+          if [[ "$local_time" == "06" || "$local_time" == "16" || "${{ github.event_name }}" == "workflow_dispatch" ]]; then
             echo "run=true" >> "$GITHUB_OUTPUT"
           else
             echo "run=false" >> "$GITHUB_OUTPUT"
