@@ -49,12 +49,54 @@ def main():
             "injury_status": p.get("injury_status"), "status": p.get("status"),
             "owned": pid in owned
         }
+    # Public API visibility audit. The official REST API does not document a
+    # trade-block endpoint or guarantee access to proposed trade offers.
+    trade_records = [
+        {"week": w, "transaction": tx}
+        for w, entries in transactions.items()
+        for tx in entries
+        if tx.get("type") == "trade"
+    ]
+    noncompleted_trades = [
+        item for item in trade_records
+        if item["transaction"].get("status") != "complete"
+    ]
+    # Preserve any explicit trade-block indicators actually returned by public
+    # roster/user metadata, without interpreting ordinary roster ownership as
+    # evidence that a player is available.
+    trade_block_indicators = []
+    for kind, records, identifier in (
+        ("roster", rosters, "roster_id"), ("user", users, "user_id")
+    ):
+        for record in records:
+            for key, value in (record.get("metadata") or {}).items():
+                key_lower = str(key).lower()
+                if "trade" in key_lower or "block" in key_lower:
+                    trade_block_indicators.append({
+                        "source": kind, "id": record.get(identifier),
+                        "key": key, "value": value
+                    })
+    trade_visibility = {
+        "public_api_only": True,
+        "weeks_checked": weeks,
+        "trade_records_found": len(trade_records),
+        "noncompleted_trade_records": noncompleted_trades,
+        "trade_block_metadata_indicators": trade_block_indicators,
+        "trade_block_complete": False,
+        "pending_offers_complete": False,
+        "limitations": (
+            "The public Sleeper REST API does not document a trade-block feed "
+            "and does not reliably return proposed/rejected/canceled trades. "
+            "An empty result is NOT evidence that no trade block or pending offers exist. "
+            "Authenticated private endpoints have not been used."
+        )
+    }
     snapshot = {
         "fetched_at_utc": dt.datetime.now(dt.timezone.utc).isoformat(),
         "league_id": LEAGUE_ID, "league": league, "nfl_state": nfl_state,
         "users": users, "rosters": rosters, "haymakers_matches": haymakers,
         "matchups": matchups, "transactions": transactions, "traded_picks": traded_picks,
-        "players": eligible,
+        "players": eligible, "trade_visibility": trade_visibility,
         "notes": "Player injury fields are Sleeper metadata, not a substitute for official practice reports. Available means not rostered in this league, not necessarily waiver-claimable right now."
     }
     OUT.parent.mkdir(parents=True, exist_ok=True)
