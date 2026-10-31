@@ -2,9 +2,8 @@ name: Update Sleeper league snapshot
 on:
   workflow_dispatch:
   schedule:
-    # 6:45 AM and 4:45 PM America/Chicago, accounting for DST.
-    # GitHub cron uses UTC, so check the local time below.
-    - cron: '45 11,12,21,22 * * *'
+    # Every 3 hours, at minute 17 UTC. Scheduled runs can be delayed by GitHub.
+    - cron: '17 */3 * * *'
 permissions:
   contents: write
 concurrency:
@@ -14,28 +13,13 @@ jobs:
   update:
     runs-on: ubuntu-latest
     steps:
-      - name: Check Central local time
-        id: time
-        shell: bash
-        run: |
-          local_time=$(TZ=America/Chicago date +%H)
-          echo "Central time: $local_time"
-          if [[ "$local_time" == "06" || "$local_time" == "16" || "${{ github.event_name }}" == "workflow_dispatch" ]]; then
-            echo "run=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "run=false" >> "$GITHUB_OUTPUT"
-          fi
       - uses: actions/checkout@v4
-        if: steps.time.outputs.run == 'true'
       - uses: actions/setup-python@v5
-        if: steps.time.outputs.run == 'true'
         with:
           python-version: '3.12'
       - name: Fetch Sleeper data
-        if: steps.time.outputs.run == 'true'
         run: python scripts/fetch_sleeper.py
       - name: Commit snapshot if changed
-        if: steps.time.outputs.run == 'true'
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
